@@ -1,0 +1,20 @@
+export const updateFolders = (state, payload) => {
+  state.folders = payload;
+};
+
+export const addFolder = (state, payload) => {
+  state.folders.push(payload);
+};
+
+export const deleteFolder = (state, payload) => {
+  state.folders.splice(payload, 1);
+};
+
+export const renameFolder = (state, payload) => {
+  state.folders[payload.index].name = payload.name;
+};
+
+export const changeIcon = (state, payload) => {
+  state.folders[payload.index].icon = payload.icon;
+  state.folders[payload.index].icon_color = payload.icon_color;
+};
