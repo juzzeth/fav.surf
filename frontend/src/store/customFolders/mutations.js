@@ -14,6 +14,12 @@ export const renameFolder = (state, payload) => {
   state.folders[payload.index].name = payload.name;
 };
 
+export const updateFolder = (state, payload) => {
+  let index = state.folders.findIndex((f) => f.id === payload.id);
+  state.folders[index] = payload;
+  console.log(state.folders[index]);
+};
+
 export const changeIcon = (state, payload) => {
   state.folders[payload.index].icon = payload.icon;
   state.folders[payload.index].icon_color = payload.icon_color;

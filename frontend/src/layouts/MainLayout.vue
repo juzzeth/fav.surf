@@ -13,7 +13,7 @@
           flat
           dense
           style="max-width: 20px"
-          @click="toggleLeftDrawer"
+          @click="leftDrawerOpen.value = !leftDrawerOpen.value"
           aria-label="Menu"
           icon="mdi-chevron-left"
           to=""
@@ -26,14 +26,14 @@
           <q-space />
           <span class="mobile-title">{{ pageTitle || "" }}</span>
           <q-icon
-            v-if="$route.meta.info"
+            v-if="route.meta.info"
             name="mdi-information-outline"
             color="secondary"
             class="q-px-sm"
             size="xs"
           >
             <q-tooltip class="text-body2">
-              {{ $route.meta.info }}
+              {{ route.meta.info }}
             </q-tooltip>
           </q-icon>
           <q-space />
@@ -41,13 +41,13 @@
             class="q-pr-sm"
             style="font-size: 16pt"
             :name="
-              !$route.params.id
+              !route.params.id
                 ? folderIcon.icon
                 : currentFolder()
                 ? currentFolder().icon
                 : null
             "
-            :color="$route.params.id ? null : folderIcon.color"
+            :color="route.params.id ? null : folderIcon.color"
             :style="iconStyle"
           />
         </div>
@@ -57,7 +57,7 @@
           flat
           dense
           class="toolbar-button"
-          @click="toggleLeftDrawer"
+          @click="leftDrawerOpen.value = !leftDrawerOpen.value"
           aria-label="Menu"
           icon="mdi-menu"
         />
@@ -124,13 +124,17 @@
           color="accent"
           aria-label="Add Folder"
           icon="mdi-folder-plus"
-          @click="displayFolderInput = !displayFolderInput"
+          @click="newFolder.display = !newFolder.display"
         />
       </SeparatorLabel>
       <!-- new folder input -->
-      <q-item v-if="displayFolderInput">
+      <q-item v-if="newFolder.display">
         <q-item-section side>
-          <q-spinner-grid color="primary" size="24px" v-if="newFolderLoading" />
+          <q-spinner-grid
+            color="primary"
+            size="24px"
+            v-if="newFolder.loading"
+          />
           <q-icon name="mdi-folder" color="accent" v-else />
         </q-item-section>
         <q-item-section>
@@ -138,7 +142,7 @@
             dense
             square
             @keydown.enter.prevent="addFolder"
-            v-model="newFolderName"
+            v-model="newFolder.name"
             autofocus
           >
             <template v-slot:append>
@@ -151,7 +155,7 @@
               />
               <q-icon
                 name="mdi-close"
-                @click="displayFolderInput = !displayFolderInput"
+                @click="newFolder.display = !newFolder.display"
                 class="cursor-pointer"
                 style="max-width: 24px; height: 24px"
               />
@@ -161,12 +165,23 @@
       </q-item>
 
       <!-- custom folders -->
-      <div v-for="folder in folders" :key="folder.id">
-        <ItemCustomFolder :folder="folder" />
-      </div>
+      <draggable
+        v-bind="dragOptions"
+        :component-data="{
+          name: !drag ? 'flip-list' : null,
+        }"
+        v-model="folders"
+        @start="drag = true"
+        @end="reorder"
+        item-key="id"
+      >
+        <template #item="{ element }">
+          <ItemCustomFolder :folder="element" />
+        </template>
+      </draggable>
 
       <!-- Custom Folder Loading Skeleton -->
-      <q-item v-show="newFolderLoading" class="GNL__drawer-item" clickable>
+      <q-item v-show="newFolder.loading" class="GNL__drawer-item" clickable>
         <q-item-section side>
           <q-skeleton size="24px" type="circle" />
         </q-item-section>
@@ -211,13 +226,13 @@
               class="q-pr-sm"
               size="md"
               :name="
-                !$route.params.id
+                !route.params.id
                   ? folderIcon.icon
                   : currentFolder()
                   ? currentFolder().icon
                   : null
               "
-              :color="$route.params.id ? null : folderIcon.color"
+              :color="route.params.id ? null : folderIcon.color"
               :style="iconStyle"
             />
             <span class="page-title">{{ pageTitle || "" }}</span>
@@ -236,16 +251,18 @@
 
 <script>
 import { defineComponent, ref, computed, reactive, onMounted } from "vue";
-import { useQuasar } from "quasar";
 import { useRoute, useRouter } from "vue-router";
-import { supabase } from "src/boot/supabase";
-import md5 from "md5";
+import { useStore } from "vuex";
+import { supabase } from "boot/supabase";
+
+import { draggable } from "boot/vuedraggable";
 import EssentialLink from "components/EssentialLink.vue";
 import SeparatorLabel from "components/SeparatorLabel";
 import ButtonMenuViews from "components/ButtonMenuViews";
 import PopupAddBookmark from "src/components/PopupAddBookmark";
-import { useStore } from "vuex";
 import ItemCustomFolder from "components/ItemCustomFolder";
+
+import md5 from "md5";
 
 export default defineComponent({
   name: "MainLayout",
@@ -256,48 +273,74 @@ export default defineComponent({
     ButtonMenuViews,
     PopupAddBookmark,
     ItemCustomFolder,
+    draggable,
   },
 
   setup() {
-    const $store = useStore();
-    const $q = useQuasar();
-    const $route = useRoute();
-    const $router = useRouter();
-    const newFolderName = ref(null);
+    const store = useStore();
+    const route = useRoute();
+    const router = useRouter();
+
     const leftDrawerOpen = ref(false);
-    const displayFolderInput = ref(false);
-    const newFolderLoading = ref(false);
 
-    const folderSubscription = supabase
-      .from("folders")
-      .on("INSERT", (payload) => {
-        $store.commit("customFolders/addFolder", payload.new);
-      })
-      .subscribe();
+    const drag = ref(false);
 
-    const bookmarkSubscription = supabase
-      .from("bookmarks")
-      .on("INSERT", (payload) => {
-        $store.commit("bookmarks/addBookmark", payload.new);
-      })
-      .subscribe();
+    const newFolder = reactive({
+      display: false,
+      loading: false,
+      name: null,
+    });
 
-    const folders = computed(() => {
-      return $store.getters["customFolders/folders"];
+    const reorder = async (e) => {
+      // direction should be -1 or 1 and is the value affected folders will be adjusted
+      // if the folder is moved down the list, which is in ascending order
+      // the new position will be greater and affected folders will decrement their position
+      var direction = -1;
+      drag.value = false;
+
+      if (e.oldIndex === e.newIndex) {
+        return;
+      } else if (e.oldIndex > e.newIndex) {
+        direction = 1;
+      }
+
+      await supabase.rpc("reorder", {
+        moved_id: folders.value[e.oldIndex].id,
+        new_position: e.newIndex,
+        old_position: e.oldIndex,
+        direction: direction,
+      });
+
+      supabase
+        .from("folders")
+        .select()
+        .then((f) => {
+          store.commit(
+            "customFolders/updateFolders",
+            f.body.sort((a, b) => a.position - b.position)
+          );
+        });
+    };
+
+    const folders = computed({
+      get: () => {
+        return store.state.customFolders.folders;
+      },
+      set: (f) => store.commit[("customFolders/orderFolders", f)],
     });
 
     const iconStyle = computed(() => {
-      if ($route.params.id) {
+      if (route.params.id) {
         return "color: " + iconColor.value + " !important";
       }
       return "";
     });
 
     const folderIcon = computed(() => {
-      if (!$route.params.id && !$route.params.folder) {
+      if (!route.params.id && !route.params.folder) {
         return { icon: "mdi-bookmark-multiple", color: "orange" };
       }
-      switch ($route.params.folder) {
+      switch (route.params.folder) {
         case "inbox":
           return { icon: "mdi-inbox", color: "blue" };
         case "favourites":
@@ -317,20 +360,20 @@ export default defineComponent({
     };
 
     const pageTitle = computed(() => {
-      return $route.params.id && currentFolder()
+      return route.params.id && currentFolder()
         ? currentFolder().name
-        : $route.params.folder || "All Bookmarks";
+        : route.params.folder || "All Bookmarks";
     });
 
     const iconColor = computed(() => {
-      return $route.params.id && currentFolder()
+      return route.params.id && currentFolder()
         ? currentFolder().icon_color
         : null;
     });
 
     const currentFolder = () => {
       if (folders.value) {
-        let folderId = $route.params.id;
+        let folderId = route.params.id;
         let folder = folders.value.find((f) => f.id == folderId);
         if (folder) {
           return folder;
@@ -339,26 +382,22 @@ export default defineComponent({
       return null;
     };
 
-    const toggleLeftDrawer = () => {
-      leftDrawerOpen.value = !leftDrawerOpen.value;
-    };
-
     const signOut = () => {
-      $store.commit("settings/setUserDetails", {});
+      store.commit("settings/setUserDetails", {});
       let supabaseSubscriptions = supabase.getSubscriptions();
       supabaseSubscriptions.forEach((s) => {
         s.unsubscribe();
       });
       supabase.auth.signOut();
-      $router.push("/login");
+      router.push("/login");
     };
 
     const addFolder = () => {
-      displayFolderInput.value = !displayFolderInput.value;
-      newFolderLoading.value = true;
+      newFolder.display = !newFolder.display;
+      newFolder.loading = true;
       // TODO: should set a settings page that includes default icon + icon color etc
-      let newFolder = {
-        name: newFolderName.value,
+      let folder = {
+        name: newFolder.name,
         user_id: supabase.auth.user().id,
         icon: "mdi-folder",
         icon_color: "var(--q-accent)",
@@ -367,11 +406,10 @@ export default defineComponent({
 
       supabase
         .from("folders")
-        .insert([newFolder])
+        .insert(folder)
         .then(() => {
-          $store.commit("customFolders/addFolder", newFolder);
-          newFolderLoading.value = false;
-          newFolderName.value = null;
+          newFolder.loading = false;
+          newFolder.name = null;
         });
     };
 
@@ -379,34 +417,60 @@ export default defineComponent({
       supabase
         .from("folders")
         .select()
-        .then((folders) => {
-          $store.commit("customFolders/updateFolders", folders.body);
+        .then((f) => {
+          store.commit(
+            "customFolders/updateFolders",
+            f.body.sort((a, b) => a.position - b.position)
+          );
         });
 
       supabase
         .from("bookmarks")
         .select()
-        .then((bookmarks) => {
-          $store.commit("bookmarks/setBookmarks", bookmarks.body);
+        .then((b) => {
+          store.commit("bookmarks/setBookmarks", b.body);
         });
+
+      supabase
+        .from("folders")
+        .on("INSERT", (payload) => {
+          store.commit("customFolders/addFolder", payload.new);
+        })
+        .subscribe();
+
+      supabase
+        .from("bookmarks")
+        .on("INSERT", (payload) => {
+          store.commit("bookmarks/addBookmark", payload.new);
+        })
+        .subscribe();
     });
 
     return {
+      newFolder,
       leftDrawerOpen,
       currentFolder,
-      toggleLeftDrawer,
       gravatar,
-      displayFolderInput,
-      newFolderLoading,
-      newFolderName,
       pageTitle,
-
       styleFn,
-      folders,
       folderIcon,
       iconStyle,
       addFolder,
       signOut,
+      drag,
+      route,
+      reorder,
+      folders,
+
+      dragOptions: {
+        animation: 200,
+        group: { name: "bookmarks", pull: false, put: true },
+        disabled: false,
+        direction: "vertical",
+        delay: 200,
+        delayOnTouchOnly: true,
+        ghostClass: "ghostFolder",
+      },
 
       thumbStyle: {
         right: "2px",
@@ -465,6 +529,10 @@ export default defineComponent({
 .q-item {
   min-height: 20px;
   padding: 6px 16px;
+}
+
+.ghostFolder {
+  opacity: 0;
 }
 
 .folder-hovered .q-item__label {

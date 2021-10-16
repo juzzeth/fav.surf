@@ -50,3 +50,26 @@ CREATE extension http with schema public;
 
 alter publication supabase_realtime add table bookmarks;
 alter publication supabase_realtime add table folders;
+
+CREATE OR REPLACE FUNCTION reorder (moved_id bigint, new_position int, old_position int, direction int)
+	RETURNS void
+	AS $$
+	UPDATE
+		folders
+	SET
+		position = position + direction
+	WHERE
+		CASE WHEN direction = - 1 THEN
+			position <= new_position AND position > old_position
+		ELSE
+			position >= new_position AND position < old_position
+		END;
+UPDATE
+	folders
+SET
+	position = new_position
+WHERE
+	id = moved_id;
+$$
+LANGUAGE sql
+VOLATILE;

@@ -92,7 +92,6 @@
 
 <script>
 import { ref, defineComponent } from "vue";
-import { useQuasar } from "quasar";
 import { mapGetters, mapActions } from "vuex";
 import DialogIconPicker from "components/DialogIconPicker.vue";
 import { supabase } from "boot/supabase";
@@ -120,8 +119,6 @@ export default defineComponent({
       icon_color: "var(--q-accent)",
     });
 
-    const $q = useQuasar();
-
     return {
       data,
       rename,
@@ -131,7 +128,7 @@ export default defineComponent({
   },
 
   computed: {
-    ...mapGetters("customFolders", ["folders", "foldersId", "hoveredFolder"]),
+    ...mapGetters("customFolders", ["folders", "hoveredFolder"]),
   },
   methods: {
     ...mapActions("customFolders", [

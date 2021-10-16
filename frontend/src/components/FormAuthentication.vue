@@ -75,7 +75,6 @@
 import { ref } from "vue";
 import { mapActions, mapGetters } from "vuex";
 import { supabase } from "boot/supabase";
-import { useQuasar } from "quasar";
 
 export default {
   name: "AuthComponent",
@@ -87,7 +86,6 @@ export default {
         /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]{1,64}@(?:[a-zA-Z0-9-]{1,63}\.){1,8}[a-zA-Z]{2,63}$/;
       return emailPattern.test(val) || "Please enter a valid email address";
     };
-    const $q = useQuasar();
     const formData = ref({
       email: "",
       password: "",
