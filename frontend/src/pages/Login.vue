@@ -1,6 +1,6 @@
 <template>
   <q-layout>
-    <q-page-container>
+    <q-page-container :class="$q.dark.isActive ? 'bg-dark' : ''">
       <q-page>
         <div class="row justify-center" style="height: 150px">
           <q-card flat style="max-width: 500px; width: 100%" class="q-px-md">
@@ -36,7 +36,7 @@
               <q-tabs
                 v-model="tab"
                 no-caps
-                active-color="primary"
+                active-color="accent"
                 indicator-color="transparent"
                 class="text-grey gt-xs"
               >
@@ -89,18 +89,14 @@ import SeparatorLabel from "components/SeparatorLabel";
 export default defineComponent({
   components: { FormAuthentication, SeparatorLabel },
   setup() {
-    const $store = useStore();
+    const store = useStore();
     const $router = useRouter();
     const loadingLogin = computed(() => {
-      return $store.getters["settings/loadingLogin"];
+      return store.getters["settings/loadingLogin"];
     });
 
     const signOut = () => {
-      $store.commit("settings/setUserDetails", {});
-      let supabaseSubscriptions = supabase.getSubscriptions();
-      supabaseSubscriptions.forEach((s) => {
-        s.unsubscribe();
-      });
+      store.commit("settings/setUserDetails", {});
       supabase.auth.signOut();
       $router.go();
     };

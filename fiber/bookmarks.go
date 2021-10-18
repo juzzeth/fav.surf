@@ -10,7 +10,7 @@ type Bookmark struct {
 	Id          string `json:"id"`
 	Url         string `json:"url"`
 	UserId      string `json:"user_id"`
-	FolderId    string `json:"folderId"`
+	FolderId    int    `json:"folder_id"`
 	Title       string `json:"title"`
 	Favourite   bool   `json:"favourite"`
 	Description string `json:"description"`

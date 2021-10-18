@@ -96,8 +96,7 @@ export default {
     return {};
   },
   computed: {
-    ...mapGetters("settings", ["activeView"]),
-    ...mapGetters("customFolders", ["folders", "foldersId"]),
+    ...mapGetters("customFolders", ["folders"]),
     folderData() {
       let folderIndex = this.folders.findIndex(
         (f) => f.id === this.bookmark.folderId

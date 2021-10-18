@@ -46,7 +46,6 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import { defineComponent } from "vue";
-
 export default defineComponent({
   name: "ButtonMenuViews",
   setup() {

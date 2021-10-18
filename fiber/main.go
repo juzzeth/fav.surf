@@ -5,6 +5,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,6 +29,8 @@ func main() {
 }
 
 func addBookmark(c *fiber.Ctx) error {
+	var result []byte
+	var err error
 	b := new(Bookmark)
 
 	if err := c.BodyParser(b); err != nil {
@@ -39,15 +42,25 @@ func addBookmark(c *fiber.Ctx) error {
 	}
 	db := connectDb(b.Token)
 
-	_, err := db.From("bookmarks").Insert(
-		map[string]string{"url": b.Url, "user_id": b.UserId, "title": b.Title, "description": b.Description, "image": b.Image, "icon": b.Icon}, false, "undefined", "minimal", "null").Execute()
+	if b.FolderId > 0 {
+		result, err = db.From("bookmarks").Insert(
+			map[string]interface{}{"url": b.Url, "user_id": b.UserId, "title": b.Title, "description": b.Description, "image": b.Image, "icon": b.Icon, "folder_id": b.FolderId}, false, "undefined", "representation", "null").Execute()
+	} else {
+		result, err = db.From("bookmarks").Insert(
+			map[string]interface{}{"url": b.Url, "user_id": b.UserId, "title": b.Title, "description": b.Description, "image": b.Image, "icon": b.Icon}, false, "undefined", "representation", "null").Execute()
+	}
 
 	if err != nil {
-		log.Println(err.Error())
+		return c.Status(400).SendString(err.Error())
 	}
+
 	if db.ClientError != nil {
 		log.Println(db.ClientError.Error())
 	}
 
-	return c.JSON(b)
+	var r []interface{}
+	if err := json.Unmarshal(result, &r); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	return c.JSON(r)
 }

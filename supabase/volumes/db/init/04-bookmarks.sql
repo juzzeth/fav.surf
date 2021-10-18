@@ -46,11 +46,6 @@ CREATE POLICY user_update_own_bookmarks ON bookmarks
     FOR ALL
     USING (auth.uid() = user_id);
 
-CREATE extension http with schema public;
-
-alter publication supabase_realtime add table bookmarks;
-alter publication supabase_realtime add table folders;
-
 CREATE OR REPLACE FUNCTION reorder (moved_id bigint, new_position int, old_position int, direction int)
 	RETURNS void
 	AS $$
@@ -71,5 +66,4 @@ SET
 WHERE
 	id = moved_id;
 $$
-LANGUAGE sql
-VOLATILE;
+LANGUAGE sql VOLATILE;

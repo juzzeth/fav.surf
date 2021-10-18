@@ -2,7 +2,8 @@
   <q-layout view="hHh lpR fFf" style="overflow: hidden">
     <q-header
       elevated
-      :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-primary'"
+      :class="$q.dark.isActive ? 'bg-dark' : 'bg-primary'"
+      class="header"
       height-hint="50"
     >
       <q-toolbar
@@ -13,7 +14,7 @@
           flat
           dense
           style="max-width: 20px"
-          @click="leftDrawerOpen.value = !leftDrawerOpen.value"
+          @click="leftDrawerOpen = !leftDrawerOpen"
           aria-label="Menu"
           icon="mdi-chevron-left"
           to=""
@@ -52,19 +53,23 @@
           />
         </div>
       </q-toolbar>
-      <q-toolbar class="toolbar q-gutter-x-md q-pl-md gt-xs">
+      <q-toolbar class="toolbar q-gutter-x-sm q-pl-md gt-xs">
         <q-btn
           flat
           dense
           class="toolbar-button"
-          @click="leftDrawerOpen.value = !leftDrawerOpen.value"
+          @click="leftDrawerOpen = !leftDrawerOpen"
           aria-label="Menu"
           icon="mdi-menu"
         />
-
-        <div class="container-logo q-gutter-x-sm q-pr-md">
-          <q-img src="images/logo.png" no-spinner fit="scale-down" />
-          <span class="text-logo">fav.surf</span>
+        <div class="container-logo q-py-sm">
+          <q-img
+            src="images/favsurf.png"
+            no-spinner
+            fit="scale-down"
+            position="left"
+            class="q-ml-md"
+          />
         </div>
 
         <q-space />
@@ -104,7 +109,13 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      :class="$q.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
+      style="overflow-x: hidden"
+    >
       <q-list class="q-pt-sm">
         <EssentialLink
           v-for="link in mainMenu"
@@ -170,7 +181,7 @@
         :component-data="{
           name: !drag ? 'flip-list' : null,
         }"
-        v-model="folders"
+        :model-value="folders"
         @start="drag = true"
         @end="reorder"
         item-key="id"
@@ -214,9 +225,9 @@
               no-caps
               size="md"
               glossy
-              color="green"
+              round
+              color="orange"
               aria-label="Add Bookmark"
-              label="Add"
               icon="mdi-bookmark-plus"
             >
               <PopupAddBookmark />
@@ -235,13 +246,12 @@
               :color="route.params.id ? null : folderIcon.color"
               :style="iconStyle"
             />
-            <span class="page-title">{{ pageTitle || "" }}</span>
+            <span class="folder-title">{{ pageTitle || "" }}</span>
 
             <q-space />
 
             <ButtonMenuViews class="q-px-sm" />
           </div>
-
           <router-view />
         </q-scroll-area>
       </q-page>
@@ -310,7 +320,7 @@ export default defineComponent({
         old_position: e.oldIndex,
         direction: direction,
       });
-
+      //TODO: return from postgres function?
       supabase
         .from("folders")
         .select()
@@ -326,7 +336,9 @@ export default defineComponent({
       get: () => {
         return store.state.customFolders.folders;
       },
-      set: (f) => store.commit[("customFolders/orderFolders", f)],
+      set: (f) => {
+        store.dispatch[("customFolders/updateFolders", f)];
+      },
     });
 
     const iconStyle = computed(() => {
@@ -384,10 +396,6 @@ export default defineComponent({
 
     const signOut = () => {
       store.commit("settings/setUserDetails", {});
-      let supabaseSubscriptions = supabase.getSubscriptions();
-      supabaseSubscriptions.forEach((s) => {
-        s.unsubscribe();
-      });
       supabase.auth.signOut();
       router.push("/login");
     };
@@ -403,11 +411,15 @@ export default defineComponent({
         icon_color: "var(--q-accent)",
         position: folders.value.length || 0,
       };
-
       supabase
         .from("folders")
         .insert(folder)
-        .then(() => {
+        .then((f) => {
+          store.commit("customFolders/updateFolders", [
+            ...folders.value,
+            f.data[0],
+          ]);
+
           newFolder.loading = false;
           newFolder.name = null;
         });
@@ -428,22 +440,8 @@ export default defineComponent({
         .from("bookmarks")
         .select()
         .then((b) => {
-          store.commit("bookmarks/setBookmarks", b.body);
+          store.commit("bookmarks/updateBookmarks", b.body);
         });
-
-      supabase
-        .from("folders")
-        .on("INSERT", (payload) => {
-          store.commit("customFolders/addFolder", payload.new);
-        })
-        .subscribe();
-
-      supabase
-        .from("bookmarks")
-        .on("INSERT", (payload) => {
-          store.commit("bookmarks/addBookmark", payload.new);
-        })
-        .subscribe();
     });
 
     return {
@@ -506,10 +504,18 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.container-logo {
+  height: 50px;
+  width: 110px;
+}
 .container-logo .q-img {
-  height: 28px;
-  width: 28px;
-  margin-bottom: 7px;
+  height: 36px;
+}
+.folder-title {
+  font-family: "Karla";
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: capitalize;
 }
 
 .toolbar-button {
@@ -539,25 +545,5 @@ export default defineComponent({
   font-size: 25px;
   font-weight: 900;
   opacity: 1;
-}
-
-.text-logo {
-  font-size: 20pt;
-  font-weight: 900;
-}
-
-.page-title {
-  font-family: "Karla";
-  font-size: 20px;
-  font-weight: 700;
-  text-transform: capitalize;
-}
-
-.header {
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  position: sticky;
-  top: 0px;
-  z-index: 1;
 }
 </style>

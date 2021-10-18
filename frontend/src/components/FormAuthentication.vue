@@ -65,7 +65,7 @@
     </div>
   </q-form>
 </template>
-<style lang="scss">
+<style lang="scss" scoped>
 .button-login {
   border-radius: 10px 10px 10px 10px;
   width: 100%;

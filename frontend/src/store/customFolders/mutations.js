@@ -3,7 +3,7 @@ export const updateFolders = (state, payload) => {
 };
 
 export const addFolder = (state, payload) => {
-  state.folders.push(payload);
+  state.folders = [...state.folders, payload];
 };
 
 export const deleteFolder = (state, payload) => {
@@ -17,7 +17,6 @@ export const renameFolder = (state, payload) => {
 export const updateFolder = (state, payload) => {
   let index = state.folders.findIndex((f) => f.id === payload.id);
   state.folders[index] = payload;
-  console.log(state.folders[index]);
 };
 
 export const changeIcon = (state, payload) => {

@@ -1,38 +1,72 @@
 <template>
-  <div class="row" style="width: 100%">
-    <div v-for="bookmark in bookmarks" :key="bookmark.id">
-      <CardPrimary
-        v-if="false"
-        :id="bookmark.id"
-        :key="bookmark.id"
-        :bookmark="bookmark"
-        :card-size="3"
-      />
-    </div>
-  </div>
+  <draggable
+    class="row"
+    v-bind="dragOptions"
+    :list="props.bookmarks"
+    item-key="id"
+    style="width: 100%"
+  >
+    <template #item="{ element }">
+      <div :class="classCardColumns">
+        <CardPrimary
+          :id="element.id"
+          :key="element.id"
+          :bookmark="element"
+          :card-size="Math.min(cardSize, 3)"
+        />
+      </div>
+    </template>
+  </draggable>
 </template>
 
 <script>
 import CardPrimary from "src/components/CardPrimary.vue";
-import { defineComponent, ref } from "vue";
-import { useQuasar } from "quasar";
+import { defineComponent, ref, computed, onMounted } from "vue";
+import { useStore } from "vuex";
+import { draggable } from "boot/vuedraggable";
 
 export default defineComponent({
   name: "CardGrid",
-  components: { CardPrimary },
-  props: ["title"],
-  setup() {
-    const $q = useQuasar();
+  components: { CardPrimary, draggable },
+  props: ["title", "bookmarks"],
+
+  setup(props) {
+    const store = useStore();
     //TODO: get from db obviously
-    const bookmarks = ref([
-      {
-        id: 0,
-        name: "placeholder",
-        url: "https://example.org",
-      },
-    ]);
+
+    const cardSize = computed(() => store.getters["settings/cardSize"]);
+
+    const classCardColumns = computed(() => {
+      let adjustedSize;
+      if (cardSize.value === 5) {
+        adjustedSize = 6;
+      } else if (cardSize.value > 6) {
+        adjustedSize = 12;
+      } else {
+        adjustedSize = cardSize.value;
+      }
+      return (
+        "cards q-pa-xs col-xs-12 col-sm-6 col-md-" +
+        adjustedSize +
+        " col-lg-" +
+        adjustedSize
+      );
+    });
+
     return {
-      bookmarks,
+      classCardColumns,
+      cardSize,
+      props,
+
+      dragOptions: {
+        animation: 0.1,
+        group: { name: "bookmarks", pull: true, put: false },
+        disabled: false,
+        ghostClass:
+          props.title === "All Bookmarks" || props.title === "Favourites"
+            ? "ghost-visible"
+            : "ghost",
+      },
     };
   },
 });
