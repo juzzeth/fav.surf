@@ -29,7 +29,6 @@ func main() {
 
 func addBookmark(c *fiber.Ctx) error {
 	b := new(Bookmark)
-	db := connectDb(b.Token)
 
 	if err := c.BodyParser(b); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -38,6 +37,7 @@ func addBookmark(c *fiber.Ctx) error {
 	if err := b.scrapeUrl(); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
+	db := connectDb(b.Token)
 
 	_, err := db.From("bookmarks").Insert(
 		map[string]string{"url": b.Url, "user_id": b.UserId, "title": b.Title, "description": b.Description, "image": b.Image, "icon": b.Icon}, false, "undefined", "minimal", "null").Execute()
