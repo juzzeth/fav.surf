@@ -4,6 +4,6 @@ export default function () {
     folders: [],
     hovered: null,
     newFolderInput: false,
-    draggedFolder: null,
+    dragHovered: null,
   };
 }

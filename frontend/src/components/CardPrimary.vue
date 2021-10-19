@@ -21,6 +21,11 @@
           :ratio="16 / 9"
           style="height: 40%"
         />
+        <ButtonBookmarkOptions
+          :id="id"
+          :size="cardSize * 40 + '%'"
+          v-show="this.isHovered"
+        />
       </div>
       <div>
         <q-separator />
@@ -31,7 +36,6 @@
               :id="id"
               :favourite="bookmark.favourite"
               :size="cardSize * 40 + '%'"
-              :absolute="true"
               v-show="this.showFavourite || this.isHovered"
               @click="toggleFavourite"
             />
@@ -79,12 +83,13 @@
 </template>
 
 <script>
-import ButtonFavourite from "components/ButtonFavourite.vue";
+import ButtonFavourite from "components/ButtonFavourite";
+import ButtonBookmarkOptions from "components/ButtonBookmarkOptions";
 import { openURL } from "quasar";
 import { mapGetters } from "vuex";
 
 export default {
-  components: { ButtonFavourite },
+  components: { ButtonFavourite, ButtonBookmarkOptions },
   props: ["bookmark", "id", "cardSize"],
   data() {
     return {
@@ -99,7 +104,7 @@ export default {
     ...mapGetters("customFolders", ["folders"]),
     folderData() {
       let folderIndex = this.folders.findIndex(
-        (f) => f.id === this.bookmark.folderId
+        (f) => f.id === this.bookmark.folder_id
       );
       if (this.folders[folderIndex] != null) {
         return {
@@ -139,7 +144,7 @@ export default {
 .button-options
   position: absolute
   top: 0
-  right: 5px
+  right: 2%
   transform: translateY(-70%)
   transition: all .2s ease
   background-color: rgba(255, 255, 255, 0)

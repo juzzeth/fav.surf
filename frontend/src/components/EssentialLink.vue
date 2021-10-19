@@ -10,11 +10,10 @@
     <q-item-section side>
       <q-icon :name="link.icon" :color="link.color">
         <q-badge
-          v-show="link.text === 'Inbox'"
+          v-show="link.text === 'Inbox' && inboxCount > -1"
           rounded
           floating
           color="red"
-          v-if="inboxCount > 0"
           class="inbox-badge"
         ></q-badge>
       </q-icon>
@@ -28,7 +27,8 @@
 </template>
 
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, computed } from "vue";
+import { useStore } from "vuex";
 
 export default defineComponent({
   name: "MainMenu",
@@ -44,7 +44,10 @@ export default defineComponent({
     },
   },
   setup() {
-    const inboxCount = ref(0);
+    const store = useStore();
+    const inboxCount = computed(() =>
+      store.state.bookmarks.bookmarks.findIndex((b) => !b.folder_id)
+    );
     return {
       inboxCount,
     };

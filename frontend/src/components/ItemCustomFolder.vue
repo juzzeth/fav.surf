@@ -3,12 +3,15 @@
     clickable
     v-if="folder.id"
     class="menu-item"
-    exact
+    :class="draggedOverClass"
     @mouseenter="folderHovered = true"
     @mouseleave="folderHovered = false"
-    exact-active-class="GNL__active-route"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
+    exact-active-class="menu-item__active-route"
     :to="'/bookmarks/folder/' + folder.id"
-    :style="'border-color: ' + this.folder.icon_color"
+    :style="'border-color: ' + folder.icon_color"
   >
     <q-item-section side>
       <q-icon
@@ -25,23 +28,23 @@
         >{{ folder.name }}</q-item-label
       >
       <q-input
-        v-show="rename"
+        v-if="rename"
         dense
-        ref="newFolderName"
         autofocus
-        @keydown.enter.prevent="this.validateRename"
+        @keydown.enter.prevent="validateRename"
         square
         height="24px"
         @click.prevent
         v-model="folderName"
+        ref="newFolderName"
       >
         <template v-slot:append>
           <q-icon
             name="mdi-check"
             style="max-width: 24px; height: 24px"
-            @click="this.validateRename"
+            @click="validateRename"
             @focus.stop
-            @keydown.enter.prevent="this.validateRename"
+            @keydown.enter.prevent="validateRename"
             class="cursor-pointer"
           />
           <q-icon
@@ -65,7 +68,7 @@
         :style="
           folder.icon_color ? 'color: ' + folder.icon_color + ' !important' : ''
         "
-        v-on:click.prevent
+        @click.prevent
       >
         <q-menu
           transition-duration="0s"
@@ -91,19 +94,29 @@
 </template>
 
 <script>
-import { ref, defineComponent } from "vue";
-import { mapGetters, mapActions } from "vuex";
+import { ref, defineComponent, computed, nextTick } from "vue";
+import { useStore } from "vuex";
 import DialogIconPicker from "components/DialogIconPicker.vue";
 import { supabase } from "boot/supabase";
+import { useQuasar } from "quasar";
+import { useRoute, useRouter } from "vue-router";
 
 export default defineComponent({
   name: "ItemCustomFolder",
   props: ["folder"],
   components: {},
   setup(props) {
+    const $q = useQuasar();
+    const route = useRoute();
+    const router = useRouter();
     const folderHovered = ref(false);
     const rename = ref(false);
+    const store = useStore();
+    const draggedOver = ref(false);
     const folderName = ref(props.folder.name);
+    const draggedOverClass = computed(() =>
+      draggedOver.value ? "menu-item__folder-hovered" : ""
+    );
     const data = ref({
       value: "",
       filter: "",
@@ -119,123 +132,147 @@ export default defineComponent({
       icon_color: "var(--q-accent)",
     });
 
+    const handleDragOver = () => {
+      draggedOver.value = true;
+      store.commit("customFolders/setDragHoveredFolder", props.folder.id);
+    };
+    const handleDragLeave = () => {
+      draggedOver.value = false;
+      store.commit("customFolders/setDragHoveredFolder", null);
+    };
+    const handleDrop = () => {
+      draggedOver.value = false;
+    };
+
+    const cancelRename = () => {
+      rename.value = false;
+      let index = store.state.customFolders.folders.findIndex(
+        (f) => f.id === props.folder.id
+      );
+      folderName.value = store.state.customFolders.folders[index].name;
+    };
+
+    const validateRename = () => {
+      let index = store.state.customFolders.folders.findIndex(
+        (f) => f.id === props.folder.id
+      );
+      let currentFolderName = store.state.customFolders.folders[index].name;
+      if (!folderName.value) {
+        folderName.value = currentFolderName;
+        rename.value = false;
+        return false;
+      } else if (currentFolderName === folderName.value) {
+        rename.value = false;
+        return false;
+      }
+      let payload = {
+        index: index,
+        name: folderName.value,
+      };
+
+      supabase
+        .from("folders")
+        .update({ name: folderName.value })
+        .match({ id: props.folder.id })
+        .then(() => {
+          store.commit("customFolders/renameFolder", payload);
+        });
+      rename.value = false;
+    };
+
+    const validateIcon = () => {
+      let index = store.state.customFolders.folders.findIndex(
+        (f) => f.id === props.folder.id
+      );
+      let currentIcon = store.state.customFolders.folders[index].icon || null;
+      let currenticon_color =
+        store.state.customFolders.folders[index].icon_color || null;
+      if (
+        data.value.value === currentIcon &&
+        data.value.icon_color === currenticon_color
+      ) {
+        data.value.value = null;
+        return false;
+      }
+      let payload = {
+        index: index,
+        icon: data.value.value,
+        icon_color: data.value.icon_color,
+      };
+
+      supabase
+        .from("folders")
+        .update({ icon: data.value.value, icon_color: data.value.icon_color })
+        .match({ id: props.folder.id })
+        .then(() => {
+          store.commit("customFolders/changeIcon", payload);
+          data.value.value = null;
+        });
+    };
+
+    const showIconDialog = () => {
+      $q.dialog({
+        component: DialogIconPicker,
+        componentProps: {
+          startIcon: props.folder.icon,
+          startColor: props.folder.icon_color,
+        },
+      }).onOk((payload) => {
+        data.value.value = payload.value.value;
+        data.value.icon_color = payload.value.icon_color;
+        validateIcon();
+      });
+    };
+
+    const confirmDelete = (folderId) => {
+      $q.dialog({
+        title: "Confirm",
+        message:
+          "Are you sure you want to delete this folder and move it's contents to your Inbox?",
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        let index = store.state.customFolders.folders.findIndex(
+          (f) => f.id === folderId
+        );
+
+        supabase
+          .from("folders")
+          .delete()
+          .match({ id: folderId })
+          .then(() => {
+            if (route.params.id === folderId) {
+              router.push("/bookmarks");
+            }
+            store.commit("customFolders/deleteFolder", index);
+          });
+      });
+    };
+
     return {
       data,
       rename,
       folderName,
       folderHovered,
+      handleDragLeave,
+      handleDragOver,
+      cancelRename,
+      validateRename,
+      validateIcon,
+      showIconDialog,
+      confirmDelete,
+      draggedOverClass,
+      handleDrop,
     };
   },
 
-  computed: {
-    ...mapGetters("customFolders", ["folders", "hoveredFolder"]),
-  },
   methods: {
-    ...mapActions("customFolders", [
-      "deleteFolder",
-      "renameFolder",
-      "changeIcon",
-    ]),
     showFolderInput() {
       this.rename = true;
       setTimeout(() => {
+        //TODO: I don't know how to do this with the composition API
         this.$refs.newFolderName.select();
       }, 20);
-    },
-    cancelRename() {
-      this.rename = false;
-      let index = this.folders.findIndex((f) => f.id === this.folder.id);
-      this.folderName = this.folders[index].name;
-    },
-    validateRename() {
-      let index = this.folders.findIndex((f) => f.id === this.folder.id);
-      let currentFolderName = this.folders[index].name;
-      if (!this.folderName) {
-        this.folderName = currentFolderName;
-        this.rename = false;
-        return false;
-      } else if (currentFolderName === this.folderName) {
-        this.rename = false;
-        return false;
-      }
-      let payload = {
-        index: index,
-        name: this.folderName,
-      };
-
-      supabase
-        .from("folders")
-        .update({ name: this.folderName })
-        .match({ id: this.folder.id })
-        .then(() => {
-          this.renameFolder(payload);
-        });
-      this.rename = false;
-    },
-    validateIcon() {
-      let index = this.folders.findIndex((f) => f.id === this.folder.id);
-      let currentIcon = this.folders[index].icon || null;
-      let currenticon_color = this.folders[index].icon_color || null;
-      if (
-        this.data.value === currentIcon &&
-        this.icon_color === currenticon_color
-      ) {
-        this.data.value = null;
-        return false;
-      }
-      let payload = {
-        index: index,
-        icon: this.data.value,
-        icon_color: this.data.icon_color,
-      };
-
-      supabase
-        .from("folders")
-        .update({ icon: this.data.value, icon_color: this.data.icon_color })
-        .match({ id: this.folder.id })
-        .then(() => {
-          this.changeIcon(payload);
-          this.data.value = null;
-        });
-    },
-    showIconDialog() {
-      this.$q
-        .dialog({
-          component: DialogIconPicker,
-          componentProps: {
-            startIcon: this.folder.icon,
-            startColor: this.folder.icon_color,
-          },
-        })
-        .onOk((payload) => {
-          this.data.value = payload.value.value;
-          this.data.icon_color = payload.value.icon_color;
-          this.validateIcon();
-        });
-    },
-    confirmDelete(folderId) {
-      this.$q
-        .dialog({
-          title: "Confirm",
-          message:
-            "Are you sure you want to delete this folder and move it's contents to your Inbox?",
-          cancel: true,
-          persistent: true,
-        })
-        .onOk(() => {
-          let index = this.folders.findIndex((f) => f.id === folderId);
-
-          supabase
-            .from("folders")
-            .delete()
-            .match({ id: folderId })
-            .then(() => {
-              if (this.$route.params.id === folderId) {
-                this.$router.push("/bookmarks");
-              }
-              this.deleteFolder(index);
-            });
-        });
     },
   },
 });
@@ -248,8 +285,6 @@ export default defineComponent({
 .menu-label--dark
   color: $light !important
 
-.body
-  font-family: "karla"
 .menu-item
   height: 100%
   .q-item__section--side
@@ -261,9 +296,6 @@ export default defineComponent({
     font-weight: 500
     opacity: 1
 
-.GNL
-  &__toolbar
-    height: 64px
   &__folder-hovered
     opacity: .5
     border-style: dotted
@@ -275,9 +307,4 @@ export default defineComponent({
     .q-item__label
       opacity: 1 !important
       font-weight: 900 !important
-
-  &__drawer-footer-link
-    text-decoration: none
-    font-weight: 500
-    font-size: .75rem
 </style>

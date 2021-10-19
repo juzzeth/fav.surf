@@ -462,7 +462,7 @@ export default defineComponent({
 
       dragOptions: {
         animation: 200,
-        group: { name: "bookmarks", pull: false, put: true },
+        group: { name: "bookmarks", pull: false, put: false },
         disabled: false,
         direction: "vertical",
         delay: 200,

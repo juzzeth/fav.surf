@@ -2,6 +2,10 @@ export const updateFolders = (state, payload) => {
   state.folders = payload;
 };
 
+export const setDragHoveredFolder = (state, payload) => {
+  state.dragHovered = payload;
+};
+
 export const addFolder = (state, payload) => {
   state.folders = [...state.folders, payload];
 };

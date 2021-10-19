@@ -2,7 +2,8 @@
   <draggable
     class="row"
     v-bind="dragOptions"
-    :list="props.bookmarks"
+    :model-value="props.bookmarks"
+    @end="handleDragEnd"
     item-key="id"
     style="width: 100%"
   >
@@ -21,9 +22,10 @@
 
 <script>
 import CardPrimary from "src/components/CardPrimary.vue";
-import { defineComponent, ref, computed, onMounted } from "vue";
+import { defineComponent, computed } from "vue";
 import { useStore } from "vuex";
 import { draggable } from "boot/vuedraggable";
+import { supabase } from "boot/supabase";
 
 export default defineComponent({
   name: "CardGrid",
@@ -32,9 +34,28 @@ export default defineComponent({
 
   setup(props) {
     const store = useStore();
-    //TODO: get from db obviously
-
     const cardSize = computed(() => store.getters["settings/cardSize"]);
+
+    const handleDragEnd = (e) => {
+      if (store.state.customFolders.dragHovered) {
+        let bookmarkId = props.bookmarks[e.oldIndex].id;
+        let index = store.state.bookmarks.bookmarks.findIndex(
+          (b) => b.id === bookmarkId
+        );
+        let payload = {
+          index: index,
+          folder_id: store.state.customFolders.dragHovered,
+        };
+
+        supabase
+          .from("bookmarks")
+          .update({ folder_id: payload.folder_id })
+          .match({ id: bookmarkId })
+          .then(() => {
+            store.commit("bookmarks/updateBookmarkFolder", payload);
+          });
+      }
+    };
 
     const classCardColumns = computed(() => {
       let adjustedSize;
@@ -57,6 +78,7 @@ export default defineComponent({
       classCardColumns,
       cardSize,
       props,
+      handleDragEnd,
 
       dragOptions: {
         animation: 0.1,

@@ -10,10 +10,6 @@ export function hoveredFolder(state) {
   return state.hovered;
 }
 
-export function draggedFolder(state) {
-  return state.draggedFolder;
-}
-
 export function newFolderInput(state) {
   return state.newFolderInput;
 }
