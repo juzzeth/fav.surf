@@ -19,7 +19,7 @@ func relateUrl(parent, child string) string {
 
 func connectDb(token string) *postgrest.Client {
 	accessToken := fmt.Sprintf("Bearer %s", token)
-	apiKey := os.Getenv("SUPABASE_ANON_KEY")
+	apiKey := os.Getenv("ANON_KEY")
 
 	db := postgrest.NewClient("http://localhost:8000/rest/v1/", "", map[string]string{"apikey": apiKey, "authorization": accessToken})
 	if db.ClientError != nil {

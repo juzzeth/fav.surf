@@ -9,15 +9,7 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 )
-
-func init() {
-	//TODO: Load other .env file rather than this new one with the same info
-	if err := godotenv.Load(); err != nil {
-		log.Fatalln("No .env file found")
-	}
-}
 
 func main() {
 	app := fiber.New()
