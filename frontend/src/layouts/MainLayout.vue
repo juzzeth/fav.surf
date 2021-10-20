@@ -182,7 +182,7 @@
           name: !drag ? 'flip-list' : null,
         }"
         :model-value="folders"
-        @start="drag = true"
+        @start="store.commit('customFolders/setDrag', true)"
         @end="reorder"
         item-key="id"
       >
@@ -306,7 +306,7 @@ export default defineComponent({
       // if the folder is moved down the list, which is in ascending order
       // the new position will be greater and affected folders will decrement their position
       var direction = -1;
-      drag.value = false;
+      store.commit("customFolders/setDrag", false);
 
       if (e.oldIndex === e.newIndex) {
         return;
@@ -457,6 +457,7 @@ export default defineComponent({
       signOut,
       drag,
       route,
+      store,
       reorder,
       folders,
 

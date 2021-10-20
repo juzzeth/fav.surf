@@ -5,5 +5,6 @@ export default function () {
     hovered: null,
     newFolderInput: false,
     dragHovered: null,
+    drag: false,
   };
 }

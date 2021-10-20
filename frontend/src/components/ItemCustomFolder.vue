@@ -115,7 +115,9 @@ export default defineComponent({
     const draggedOver = ref(false);
     const folderName = ref(props.folder.name);
     const draggedOverClass = computed(() =>
-      draggedOver.value ? "menu-item__folder-hovered" : ""
+      draggedOver.value && !store.state.customFolders.drag
+        ? "menu-item__folder-hovered"
+        : ""
     );
     const data = ref({
       value: "",
