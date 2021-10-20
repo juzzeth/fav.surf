@@ -21,7 +21,7 @@ func connectDb(token string) *postgrest.Client {
 	accessToken := fmt.Sprintf("Bearer %s", token)
 	apiKey := os.Getenv("ANON_KEY")
 
-	db := postgrest.NewClient("http://localhost:8000/rest/v1/", "", map[string]string{"apikey": apiKey, "authorization": accessToken})
+	db := postgrest.NewClient("http://rest:3000/", "", map[string]string{"apikey": apiKey, "authorization": accessToken})
 	if db.ClientError != nil {
 		log.Panicln(db.ClientError)
 	}
