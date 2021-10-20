@@ -10,6 +10,10 @@ Built using [Quasar v2](https://quasar.dev/) (Vue 3) and [supabase](https://supa
 
 ![Build](https://img.shields.io/badge/build-cross%20your%20fingers-orange)
 
+## Screenshots
+
+![App Screenshot](screenshot.png)
+
 ## Features
 
 - [x] User login/registration
@@ -38,10 +42,24 @@ Built using [Quasar v2](https://quasar.dev/) (Vue 3) and [supabase](https://supa
   - I want this to be as barebones as possible e.g., a button that saves bookmark onclick
 - [ ] iOS/Android/Mac OS/Windows/Linux apps
 
-## Screenshots
+## Development
 
-![App Screenshot](screenshot.png)
+```bash
+git clone https://github.com/juzzeth/fav.surf.git
+cd fav.surf
+```
 
-## Contributing
+### Frontend
 
-Things are messy at the moment but feel free to reach out if you want to contribute. I'll add more here once things are tidied up.
+```bash
+cd frontend
+yarn
+quasar dev
+```
+
+### Backend
+
+```bash
+cd supabase
+docker compose up
+```
