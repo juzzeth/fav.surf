@@ -113,6 +113,7 @@ export default defineComponent({
     const rename = ref(false);
     const store = useStore();
     const draggedOver = ref(false);
+    const newFolderName = ref(null); // https://v3.vuejs.org/guide/composition-api-template-refs.html
     const folderName = ref(props.folder.name);
     const draggedOverClass = computed(() =>
       draggedOver.value && !store.state.customFolders.drag
@@ -251,11 +252,19 @@ export default defineComponent({
       });
     };
 
+    const showFolderInput = () => {
+      rename.value = true
+
+      // Will run callback function after the next render cycle
+      nextTick(newFolderName.value.select)
+    };
+
     return {
       data,
       rename,
       folderName,
       folderHovered,
+      newFolderName,
       handleDragLeave,
       handleDragOver,
       cancelRename,
@@ -265,17 +274,8 @@ export default defineComponent({
       confirmDelete,
       draggedOverClass,
       handleDrop,
+      showFolderInput,
     };
-  },
-
-  methods: {
-    showFolderInput() {
-      this.rename = true;
-      setTimeout(() => {
-        //TODO: I don't know how to do this with the composition API
-        this.$refs.newFolderName.select();
-      }, 20);
-    },
   },
 });
 </script>
