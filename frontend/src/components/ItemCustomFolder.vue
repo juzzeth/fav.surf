@@ -256,7 +256,7 @@ export default defineComponent({
       rename.value = true
 
       // Will run callback function after the next render cycle
-      nextTick(newFolderName.value.select)
+      nextTick(newFolderName.value.select());
     };
 
     return {
